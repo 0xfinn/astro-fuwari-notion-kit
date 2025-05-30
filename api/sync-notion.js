@@ -25,8 +25,18 @@ export default async function handler(req, res) {
     const description = richTextToPlainText(page.properties.Description?.rich_text) || "''";
     const tags = (page.properties.Tags?.multi_select?.map(tag => tag.name) || []).filter(Boolean);
     const category = page.properties.Category?.select?.name || "''";
-    const yamlEscape = str => str === "''" ? "''" : /[:\[\]\{\},\n\"]/.test(str) ? `\"${str.replace(/\"/g, '\\"')}\"` : str;
-    const frontmatter = `---\ntitle: ${yamlEscape(title)}\npublished: ${published}\ndescription: ${yamlEscape(description)}\ntags: [${tags.map(yamlEscape).join(', ')}]\ncategory: ${yamlEscape(category)}\ndraft: ${draft}\n---\n`;
+    // 新增：获取封面图 URL
+    let cover = '';
+    if (page.cover) {
+      if (page.cover.type === 'external') {
+        cover = page.cover.external.url;
+      } else if (page.cover.type === 'file') {
+        cover = page.cover.file.url;
+      }
+    }
+    const yamlEscape = str => str === "''" ? "''" : /[:\[\]\{\},\n\"]/.test(str) ? `"${str.replace(/"/g, '\"')}"` : str;
+    // frontmatter 增加 image 字段
+    const frontmatter = `---\ntitle: ${yamlEscape(title)}\npublished: ${published}\ndescription: ${yamlEscape(description)}\ntags: [${tags.map(yamlEscape).join(', ')}]\ncategory: ${yamlEscape(category)}\nimage: ${yamlEscape(cover)}\ndraft: ${draft}\n---\n`;
     fs.writeFileSync(
       path.join(outputDir, `${notionId}.md`),
       frontmatter + '\n' + mdString.parent
