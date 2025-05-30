@@ -13,6 +13,10 @@ const databaseId = process.env.NOTION_DATABASE_ID;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const outputDir = path.join(__dirname, '../src/content/posts/notion');
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
+const localFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.md'));
 
 (async () => {
   const pages = await notion.databases.query({ database_id: databaseId });
