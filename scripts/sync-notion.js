@@ -8,7 +8,6 @@ import { richTextToPlainText } from '../src/utils/richTextToPlainText.js';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const n2m = new NotionToMarkdown({ notionClient: notion });
-
 const databaseId = process.env.NOTION_DATABASE_ID;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,13 +15,10 @@ const outputDir = path.join(__dirname, '../src/content/posts/notion');
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
-const localFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.md'));
 
-(async () => {
+export async function syncNotion() {
   const pages = await notion.databases.query({ database_id: databaseId });
-  // 获取本地所有 Markdown 文件
   const localFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.md'));
-  // 用于收集本次同步的非草稿文章文件名（如：notionId.md）
   const notionFiles = [];
   for (const page of pages.results) {
     const draft = !(page.properties.Public?.checkbox === true);
@@ -36,7 +32,6 @@ const localFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.md'));
     const description = richTextToPlainText(page.properties.Description?.rich_text) || "''";
     const tags = (page.properties.Tags?.multi_select?.map(tag => tag.name) || []).filter(Boolean);
     const category = page.properties.Category?.select?.name || "''";
-    // 新增：获取封面图 URL
     let cover = '';
     if (page.cover) {
       if (page.cover.type === 'external') {
@@ -46,7 +41,6 @@ const localFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.md'));
       }
     }
     const yamlEscape = str => str === "''" ? "''" : /[:\[\]\{\},\n\"]/.test(str) ? `"${str.replace(/"/g, '\"')}"` : str;
-    // frontmatter 增加 cover 字段
     const frontmatter = `---\ntitle: ${yamlEscape(title)}\npublished: ${published}\ndescription: ${yamlEscape(description)}\ntags: [${tags.map(yamlEscape).join(', ')}]\ncategory: ${yamlEscape(category)}\nimage: ${yamlEscape(cover)}\ndraft: ${draft}\n---\n`;
     fs.writeFileSync(
       path.join(outputDir, `${notionId}.md`),
@@ -54,10 +48,13 @@ const localFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.md'));
     );
     console.log(`Saved ${title}`);
   }
-  // 删除本地多余的 Markdown 文件
   for (const file of localFiles) {
     if (!notionFiles.includes(file)) {
       fs.unlinkSync(path.join(outputDir, file));
     }
   }
-})();
+}
+
+if (import.meta.url === process.argv[1] || import.meta.url === `file://${process.argv[1]}`) {
+  syncNotion();
+}
