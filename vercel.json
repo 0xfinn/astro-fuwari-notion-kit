@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/sync-notion",
-      "schedule": "0 3 * * *"
-    }
-  ]
-}
+{}
